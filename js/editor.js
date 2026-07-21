@@ -239,7 +239,7 @@ const Editor = (() => {
 
     state.image = image;
     state.imageName = file.name.replace(/\.[^.]+$/, '');
-    fitImageToHole();
+    setDefaultTransform();
     canvasEmpty.classList.add('hidden');
     drawPreview();
     App.showToast('Foto berhasil diunggah', `${file.name} siap diedit.`);
@@ -263,11 +263,11 @@ const Editor = (() => {
     });
   }
 
-  function fitImageToHole() {
+  function setDefaultTransform() {
     if (!state.image) return;
-    const holeRadius = previewSize * 0.315 - previewSize * 0.075;
-    const fitScale = Math.max((holeRadius * 1.55) / state.image.width, (holeRadius * 1.55) / state.image.height);
-    state.baseScale = fitScale;
+
+    const imageCoverScale = Math.max(previewSize / state.image.width, previewSize / state.image.height);
+    state.baseScale = imageCoverScale;
     state.x = previewSize / 2;
     state.y = previewSize / 2;
     state.scale = 1;
@@ -280,7 +280,7 @@ const Editor = (() => {
 
   function resetImagePosition(keepImage = true) {
     if (keepImage && state.image) {
-      fitImageToHole();
+      setDefaultTransform();
     } else {
       state.x = previewSize / 2;
       state.y = previewSize / 2;
@@ -298,6 +298,7 @@ const Editor = (() => {
     ctx.save();
 
     drawBackground(ctx, previewSize, state.currentTemplate?.theme || 'graduation');
+    drawFrameOnCanvas(ctx, previewSize, false);
 
     if (state.image) {
       drawMaskedPhoto(ctx, previewSize);
@@ -328,10 +329,15 @@ const Editor = (() => {
 
   function drawMaskedPhoto(context, size) {
     const center = size / 2;
-    const innerRadius = size * 0.255;
+    const radius = size * 0.315;
     context.save();
-    context.beginPath();
-    context.arc(center, center, innerRadius, 0, Math.PI * 2);
+    if (state.currentTemplate.theme === 'graduation') {
+      context.beginPath();
+      context.arc(center, center, radius - size * 0.055, 0, Math.PI * 2);
+    } else {
+      context.beginPath();
+      context.arc(center, center, radius - size * 0.045, 0, Math.PI * 2);
+    }
     context.clip();
 
     context.save();
@@ -591,15 +597,7 @@ const Editor = (() => {
 
     exportContext.clearRect(0, 0, exportSize, exportSize);
 
-    exportContext.save();
-    exportContext.translate((state.x / previewSize) * exportSize, (state.y / previewSize) * exportSize);
-    exportContext.rotate((state.rotation * Math.PI) / 180);
-    const finalScale = state.baseScale * state.scale * (exportSize / previewSize);
-    const drawWidth = state.image.width * finalScale;
-    const drawHeight = state.image.height * finalScale;
-    exportContext.drawImage(state.image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-    exportContext.restore();
-
+    drawMaskedPhoto(exportContext, exportSize);
     drawFrameOnCanvas(exportContext, exportSize);
 
     exportCanvas.toBlob((blob) => {
