@@ -1,0 +1,16 @@
+[
+  {
+    "id": "templateA",
+    "title": "Selamat Yudisium Sarjana",
+    "subtitle": "Fakultas Teknologi Informasi\nUniversitas Islam Kalimantan\nSyekh Muhammad Arsyad Al Banjari",
+    "text": "Selamat atas keberhasilan menyelesaikan studi. Semoga ilmu yang diperoleh menjadi berkah dan bermanfaat.",
+    "theme": "graduation"
+  },
+  {
+    "id": "templateB",
+    "title": "Selamat Bergabung Mahasiswa Baru",
+    "subtitle": "Fakultas Teknologi Informasi\nUniversitas Islam Kalimantan\nSyekh Muhammad Arsyad Al Banjari",
+    "text": "Selamat datang menjadi bagian keluarga besar Fakultas Teknologi Informasi.",
+    "theme": "newstudent"
+  }
+]
