@@ -239,7 +239,7 @@ const Editor = (() => {
 
     state.image = image;
     state.imageName = file.name.replace(/\.[^.]+$/, '');
-    setDefaultTransform();
+    fitImageToHole();
     canvasEmpty.classList.add('hidden');
     drawPreview();
     App.showToast('Foto berhasil diunggah', `${file.name} siap diedit.`);
@@ -263,11 +263,11 @@ const Editor = (() => {
     });
   }
 
-  function setDefaultTransform() {
+  function fitImageToHole() {
     if (!state.image) return;
-
-    const imageCoverScale = Math.max(previewSize / state.image.width, previewSize / state.image.height);
-    state.baseScale = imageCoverScale;
+    const holeRadius = previewSize * 0.315 - previewSize * 0.075;
+    const fitScale = Math.max((holeRadius * 1.55) / state.image.width, (holeRadius * 1.55) / state.image.height);
+    state.baseScale = fitScale;
     state.x = previewSize / 2;
     state.y = previewSize / 2;
     state.scale = 1;
@@ -280,7 +280,7 @@ const Editor = (() => {
 
   function resetImagePosition(keepImage = true) {
     if (keepImage && state.image) {
-      setDefaultTransform();
+      fitImageToHole();
     } else {
       state.x = previewSize / 2;
       state.y = previewSize / 2;
@@ -297,28 +297,54 @@ const Editor = (() => {
     ctx.clearRect(0, 0, previewSize, previewSize);
     ctx.save();
 
-    ctx.fillStyle = state.currentTemplate?.theme === 'newstudent' ? '#eef8f2' : '#edf4ff';
-    ctx.fillRect(0, 0, previewSize, previewSize);
+    drawBackground(ctx, previewSize, state.currentTemplate?.theme || 'graduation');
 
     if (state.image) {
-      ctx.save();
-      ctx.translate(state.x, state.y);
-      ctx.rotate((state.rotation * Math.PI) / 180);
-      const finalScale = state.baseScale * state.scale;
-      const drawWidth = state.image.width * finalScale;
-      const drawHeight = state.image.height * finalScale;
-      ctx.drawImage(state.image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-      ctx.restore();
+      drawMaskedPhoto(ctx, previewSize);
       canvasEmpty.classList.add('hidden');
     } else {
       canvasEmpty.classList.remove('hidden');
     }
 
-    drawFrameOnCanvas(ctx, previewSize);
+    drawFrameOnCanvas(ctx, previewSize, true);
     ctx.restore();
   }
 
-  function drawFrameOnCanvas(context, size) {
+
+  function drawBackground(context, size, theme) {
+    context.save();
+    const gradient = context.createLinearGradient(0, 0, size, size);
+    if (theme === 'newstudent') {
+      gradient.addColorStop(0, '#eef8ff');
+      gradient.addColorStop(1, '#eefaf4');
+    } else {
+      gradient.addColorStop(0, '#edf4ff');
+      gradient.addColorStop(1, '#f8fbff');
+    }
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+    context.restore();
+  }
+
+  function drawMaskedPhoto(context, size) {
+    const center = size / 2;
+    const innerRadius = size * 0.255;
+    context.save();
+    context.beginPath();
+    context.arc(center, center, innerRadius, 0, Math.PI * 2);
+    context.clip();
+
+    context.save();
+    context.translate(state.x, state.y);
+    context.rotate((state.rotation * Math.PI) / 180);
+    const finalScale = state.baseScale * state.scale;
+    const drawWidth = state.image.width * finalScale;
+    const drawHeight = state.image.height * finalScale;
+    context.drawImage(state.image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+    context.restore();
+    context.restore();
+  }
+  function drawFrameOnCanvas(context, size, overlayOnly = true) {
     if (!state.currentTemplate) return;
 
     const center = size / 2;
@@ -330,17 +356,19 @@ const Editor = (() => {
       drawRibbon(context, size * 0.08, size * 0.06, size * 0.84, size * 0.1, '#1b4da7', '#2a6de0');
       drawRibbon(context, size * 0.1, size * 0.82, size * 0.8, size * 0.11, '#bc8d13', '#f0c45d');
 
-      context.lineWidth = size * 0.035;
-      context.strokeStyle = '#1a55b9';
-      context.beginPath();
-      context.arc(center, center, radius, 0, Math.PI * 2);
-      context.stroke();
+      if (overlayOnly) {
+        context.lineWidth = size * 0.035;
+        context.strokeStyle = '#1a55b9';
+        context.beginPath();
+        context.arc(center, center, radius, 0, Math.PI * 2);
+        context.stroke();
 
-      context.lineWidth = size * 0.012;
-      context.strokeStyle = '#ffffff';
-      context.beginPath();
-      context.arc(center, center, radius - size * 0.022, 0, Math.PI * 2);
-      context.stroke();
+        context.lineWidth = size * 0.012;
+        context.strokeStyle = '#ffffff';
+        context.beginPath();
+        context.arc(center, center, radius - size * 0.022, 0, Math.PI * 2);
+        context.stroke();
+      }
 
       context.lineWidth = size * 0.012;
       context.strokeStyle = '#d8a62c';
@@ -359,22 +387,26 @@ const Editor = (() => {
       drawBadge(context, size * 0.79, size * 0.18, size * 0.055, '#b78300', '#f0c45d', 'cap');
       drawCornerDecoration(context, size * 0.12, size * 0.74, size * 0.09, '#ffffff');
       drawCornerDecoration(context, size * 0.83, size * 0.19, size * 0.09, '#ffffff', true);
-      drawTitleBlock(context, size, center, size * 0.15, ['SELAMAT', 'YUDISIUM SARJANA'], '#ffffff');
-      drawMultilineText(context, state.currentTemplate.subtitle, center, size * 0.865, size * 0.026, '#ffffff', 1.35, 600, size);
+      if (overlayOnly) {
+        drawTitleBlock(context, size, center, size * 0.15, ['SELAMAT', 'YUDISIUM SARJANA'], '#ffffff');
+        drawMultilineText(context, state.currentTemplate.subtitle, center, size * 0.865, size * 0.026, '#ffffff', 1.35, 600, size);
+      }
     } else {
       drawWaveBand(context, size, size * 0.68, size * 0.16, '#2a71e2', '#33bb83');
 
-      context.lineWidth = size * 0.028;
-      context.strokeStyle = '#ffffff';
-      context.beginPath();
-      context.arc(center, center, radius, 0, Math.PI * 2);
-      context.stroke();
+      if (overlayOnly) {
+        context.lineWidth = size * 0.028;
+        context.strokeStyle = '#ffffff';
+        context.beginPath();
+        context.arc(center, center, radius, 0, Math.PI * 2);
+        context.stroke();
 
-      context.lineWidth = size * 0.012;
-      context.strokeStyle = '#1b57bd';
-      context.beginPath();
-      context.arc(center, center, radius + size * 0.022, 0, Math.PI * 2);
-      context.stroke();
+        context.lineWidth = size * 0.012;
+        context.strokeStyle = '#1b57bd';
+        context.beginPath();
+        context.arc(center, center, radius + size * 0.022, 0, Math.PI * 2);
+        context.stroke();
+      }
 
       context.lineWidth = size * 0.016;
       context.strokeStyle = 'rgba(30,163,108,0.28)';
@@ -385,8 +417,10 @@ const Editor = (() => {
       drawPartialCircle(context, size * 0.82, size * 0.18, size * 0.12, '#f0c45d', size);
       drawBadge(context, size * 0.76, size * 0.19, size * 0.055, '#1950b0', '#2fc181', 'user');
       drawConfetti(context, size);
-      drawTitleBlock(context, size, center, size * 0.13, ['SELAMAT DATANG', 'MAHASISWA BARU'], '#ffffff');
-      drawMultilineText(context, state.currentTemplate.subtitle, center, size * 0.86, size * 0.026, '#ffffff', 1.35, 600, size);
+      if (overlayOnly) {
+        drawTitleBlock(context, size, center, size * 0.13, ['SELAMAT DATANG', 'MAHASISWA BARU'], '#ffffff');
+        drawMultilineText(context, state.currentTemplate.subtitle, center, size * 0.86, size * 0.026, '#ffffff', 1.35, 600, size);
+      }
     }
 
     context.restore();
