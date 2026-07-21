@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twibbon Generator FTI UNISKA</title>
+  <meta name="description" content="Aplikasi web Twibbon Generator Fakultas Teknologi Informasi Universitas Islam Kalimantan Syekh Muhammad Arsyad Al Banjari.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkR4j8lJgyAHIhR35VZc2oM/gI1w1BzCK7+Q==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Lewati ke konten</a>
+
+  <div class="site-bg" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+    <span class="grid-glow"></span>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#beranda" class="brand" aria-label="Beranda Twibbon Generator">
+        <img src="./assets/logo-placeholder.svg" alt="Logo placeholder FTI UNISKA" width="56" height="56">
+        <div class="brand-copy">
+          <span class="brand-title">Twibbon Fakultas Teknologi Informasi</span>
+          <span class="brand-subtitle">Universitas Islam Kalimantan Syekh Muhammad Arsyad Al Banjari</span>
+        </div>
+      </a>
+
+      <nav class="main-nav" aria-label="Menu utama">
+        <button class="nav-toggle" type="button" id="navToggle" aria-expanded="false" aria-controls="navMenu" aria-label="Buka menu navigasi">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="nav-menu" id="navMenu">
+          <a href="#beranda">Beranda</a>
+          <a href="#template">Template</a>
+          <a href="#tentang">Tentang</a>
+          <button class="theme-toggle" type="button" id="themeToggle" aria-label="Ubah mode tema">
+            <i class="fa-solid fa-moon"></i>
+            <span>Mode</span>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="hero section" id="beranda">
+      <div class="container hero-grid">
+        <div class="hero-copy reveal">
+          <span class="eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> Generator Twibbon Client-Side</span>
+          <h1>Twibbon Generator FTI UNISKA untuk yudisium dan mahasiswa baru.</h1>
+          <p>Pilih template dari API, unggah foto, atur posisi dengan drag, zoom, dan rotasi, lalu unduh hasil PNG kualitas tinggi langsung dari browser.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#template"><i class="fa-solid fa-layer-group"></i> Pilih Template</a>
+            <button class="btn btn-secondary" type="button" id="openAboutBtn"><i class="fa-solid fa-circle-info"></i> Lihat Tentang</button>
+          </div>
+          <ul class="feature-chips" role="list">
+            <li><i class="fa-solid fa-cloud-arrow-up"></i> Drag & drop upload</li>
+            <li><i class="fa-solid fa-image"></i> PNG 2000 × 2000</li>
+            <li><i class="fa-solid fa-moon"></i> Dark mode</li>
+          </ul>
+        </div>
+
+        <div class="hero-card reveal delay-1">
+          <div class="hero-card-top">
+            <span class="status-pill"><span class="pulse-dot"></span> Responsive</span>
+            <span class="status-pill status-accent">Static Website</span>
+          </div>
+          <div class="hero-mockup">
+            <div class="mockup-window">
+              <div class="mockup-bar">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="mockup-content">
+                <div class="mockup-frame preview-mini graduation">
+                  <div class="mini-photo"></div>
+                  <div class="mini-ring"></div>
+                  <div class="mini-ribbon top"></div>
+                  <div class="mini-ribbon bottom"></div>
+                  <div class="mini-badge"><i class="fa-solid fa-graduation-cap"></i></div>
+                </div>
+                <div class="mockup-metrics">
+                  <div class="metric-box">
+                    <strong>2</strong>
+                    <span>Template API</span>
+                  </div>
+                  <div class="metric-box">
+                    <strong>100%</strong>
+                    <span>Browser-based</span>
+                  </div>
+                  <div class="metric-box">
+                    <strong>PNG</strong>
+                    <span>High Quality</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section template-section" id="template">
+      <div class="container">
+        <div class="section-heading reveal">
+          <span class="eyebrow"><i class="fa-solid fa-shapes"></i> Template</span>
+          <h2>Template twibbon dibaca dari endpoint API.</h2>
+          <p>Saat API tidak tersedia, aplikasi otomatis memakai data dummy lokal agar tetap bisa dipakai tanpa konfigurasi server.</p>
+        </div>
+
+        <div class="template-status reveal delay-1">
+          <div class="status-box">
+            <i class="fa-solid fa-database"></i>
+            <div>
+              <strong>Status sumber data</strong>
+              <p id="apiStatusText">Memuat template...</p>
+            </div>
+          </div>
+          <button class="btn btn-ghost" type="button" id="reloadTemplatesBtn"><i class="fa-solid fa-rotate"></i> Muat Ulang</button>
+        </div>
+
+        <div class="loading-card" id="templateLoading" aria-live="polite">
+          <div class="spinner"></div>
+          <p>Mengambil template dari mock API...</p>
+        </div>
+
+        <div class="template-grid" id="templateGrid" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="section editor-section hidden" id="editorSection">
+      <div class="container editor-shell reveal">
+        <div class="section-heading compact">
+          <span class="eyebrow"><i class="fa-solid fa-pen-ruler"></i> Editor Twibbon</span>
+          <h2 id="editorTitle">Atur foto dan hasilkan twibbon.</h2>
+          <p id="editorSubtitle">Pilih template terlebih dahulu untuk mulai mengedit.</p>
+        </div>
+
+        <div class="editor-layout">
+          <div class="preview-panel card-surface">
+            <div class="panel-topbar">
+              <span class="panel-label"><i class="fa-solid fa-expand"></i> Preview</span>
+              <span class="hint-label">Double click untuk reset posisi</span>
+            </div>
+            <div class="canvas-stage" id="canvasStage">
+              <canvas id="previewCanvas" width="1000" height="1000" aria-label="Preview twibbon"></canvas>
+              <div class="canvas-empty" id="canvasEmpty">
+                <i class="fa-solid fa-image-portrait"></i>
+                <p>Unggah foto untuk melihat hasil twibbon.</p>
+              </div>
+              <div class="frame-overlay template-graduation" id="frameOverlay" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <aside class="control-panel card-surface">
+            <div class="panel-topbar">
+              <span class="panel-label"><i class="fa-solid fa-sliders"></i> Panel Kontrol</span>
+              <span class="drag-badge"><i class="fa-solid fa-hand-pointer"></i> Drag aktif</span>
+            </div>
+
+            <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Unggah foto atau seret foto ke sini">
+              <input type="file" id="photoInput" accept="image/*" hidden>
+              <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+              <strong>Upload foto</strong>
+              <p>Drag & drop atau klik area ini untuk memilih gambar.</p>
+              <div class="upload-progress hidden" id="uploadProgressWrapper">
+                <div class="progress-bar"><span id="uploadProgressBar"></span></div>
+                <small id="uploadProgressText">0%</small>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="zoomSlider">Zoom <span id="zoomValue">100%</span></label>
+              <input type="range" id="zoomSlider" min="0.5" max="2.5" step="0.01" value="1">
+            </div>
+
+            <div class="control-group">
+              <label for="rotateSlider">Rotate <span id="rotateValue">0°</span></label>
+              <input type="range" id="rotateSlider" min="-180" max="180" step="1" value="0">
+            </div>
+
+            <div class="control-actions">
+              <button class="btn btn-secondary" type="button" id="resetBtn"><i class="fa-solid fa-arrows-rotate"></i> Reset</button>
+              <button class="btn btn-primary" type="button" id="downloadBtn"><i class="fa-solid fa-download"></i> Download PNG</button>
+              <button class="btn btn-ghost" type="button" id="changeTemplateBtn"><i class="fa-solid fa-layer-group"></i> Ganti Template</button>
+            </div>
+
+            <div class="template-info" id="templateInfoCard">
+              <h3>Informasi Template</h3>
+              <p>Pilih salah satu template untuk melihat judul, subtitle, dan tema dari API.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section about-section" id="tentang">
+      <div class="container about-grid">
+        <article class="about-card card-surface reveal">
+          <span class="eyebrow"><i class="fa-solid fa-circle-info"></i> Tentang Aplikasi</span>
+          <h2>Dirancang untuk kebutuhan akademik yang cepat, rapi, dan mudah dipakai.</h2>
+          <p>Aplikasi berjalan sepenuhnya di browser dengan HTML5, CSS3, JavaScript murni, Canvas API, dan mock API JSON lokal sehingga mudah dipindahkan ke REST API sungguhan.</p>
+        </article>
+
+        <article class="about-card card-surface reveal delay-1">
+          <ul class="about-list" role="list">
+            <li><i class="fa-solid fa-check"></i> Tanpa framework, tanpa backend wajib.</li>
+            <li><i class="fa-solid fa-check"></i> Editor drag, zoom, rotate, dan reset.</li>
+            <li><i class="fa-solid fa-check"></i> Export PNG transparan resolusi tinggi.</li>
+            <li><i class="fa-solid fa-check"></i> Responsif untuk desktop, tablet, dan mobile.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="./js/api.js" defer></script>
+  <script src="./js/templates.js" defer></script>
+  <script src="./js/editor.js" defer></script>
+  <script src="./js/app.js" defer></script>
+</body>
+</html>
