@@ -1,3 +1,4 @@
+
 const Editor = (() => {
   const editorSection = document.getElementById('editorSection');
   const previewCanvas = document.getElementById('previewCanvas');
@@ -20,612 +21,135 @@ const Editor = (() => {
   const editorSubtitle = document.getElementById('editorSubtitle');
   const templateInfoCard = document.getElementById('templateInfoCard');
   const ctx = previewCanvas.getContext('2d');
-
-  const previewSize = 1000;
-  const exportSize = 2000;
-
-  const state = {
-    currentTemplate: null,
-    image: null,
-    imageName: '',
-    x: previewSize / 2,
-    y: previewSize / 2,
-    scale: 1,
-    rotation: 0,
-    baseScale: 1,
-    isDragging: false,
-    dragStartX: 0,
-    dragStartY: 0,
-    pointerStartX: 0,
-    pointerStartY: 0
-  };
+  const PREVIEW = 1000, EXPORT = 2000, HOLE = 0.255;
+  const state = { template: null, image: null, x: PREVIEW / 2, y: PREVIEW / 2, scale: 1, rotation: 0, baseScale: 1, dragging: false, px: 0, py: 0, sx: 0, sy: 0 };
 
   function openTemplate(template) {
-    state.currentTemplate = template;
+    state.template = template;
     editorSection.classList.remove('hidden');
-    updateEditorTexts();
-    applyFrameOverlay(template);
-    resetImagePosition(false);
-    drawPreview();
+    renderOverlay();
+    fitToPortraitPreset();
+    draw();
     App.showToast('Template dipilih', `${template.title} siap digunakan.`);
   }
 
-  function updateEditorTexts() {
-    if (!state.currentTemplate) return;
-
-    editorTitle.textContent = state.currentTemplate.title;
-    editorSubtitle.textContent = state.currentTemplate.subtitle.replace(/\n/g, ' · ');
-    templateInfoCard.innerHTML = `
-      <h3>${state.currentTemplate.title}</h3>
-      <p>${state.currentTemplate.subtitle.replace(/\n/g, '<br>')}</p>
-      <p>${state.currentTemplate.text}</p>
-      <p><strong>Tema:</strong> ${state.currentTemplate.theme}</p>
+  function renderOverlay() {
+    editorTitle.textContent = state.template.title;
+    editorSubtitle.textContent = state.template.subtitle.replace(/\n/g, ' · ');
+    templateInfoCard.innerHTML = `<h3>${state.template.title}</h3><p>${state.template.subtitle.replace(/\n/g, '<br>')}</p><p>${state.template.text}</p><p><strong>Tema:</strong> ${state.template.theme}</p>`;
+    frameOverlay.className = `frame-overlay template-${state.template.theme}`;
+    frameOverlay.innerHTML = state.template.theme === 'graduation' ? `
+      <div class="frame-circle"></div><div class="frame-badge"><i class="fa-solid fa-graduation-cap"></i></div>
+      <div class="frame-title top"><strong>SELAMAT</strong><span>YUDISIUM SARJANA</span></div>
+      <div class="frame-title bottom"><span>${state.template.subtitle.replace(/\n/g, '<br>')}</span></div>
+      <div class="corner-accent left"></div><div class="corner-accent right"></div>
+    ` : `
+      <div class="frame-circle"></div><div class="frame-badge"><i class="fa-solid fa-user-graduate"></i></div>
+      <div class="frame-title top"><strong>SELAMAT DATANG</strong><span>MAHASISWA BARU</span></div>
+      <div class="frame-title bottom"><span>${state.template.subtitle.replace(/\n/g, '<br>')}</span></div>
+      <div class="wave"></div><div class="confetti"></div>
     `;
   }
 
-  function applyFrameOverlay(template) {
-    frameOverlay.className = `frame-overlay ${template.theme === 'graduation' ? 'template-graduation' : 'template-newstudent'}`;
-
-    if (template.theme === 'graduation') {
-      frameOverlay.innerHTML = `
-        <div class="frame-circle"></div>
-        <div class="frame-badge"><i class="fa-solid fa-graduation-cap"></i></div>
-        <div class="frame-title top">
-          <strong>SELAMAT</strong>
-          <span>YUDISIUM SARJANA</span>
-        </div>
-        <div class="frame-title bottom">
-          <span>${template.subtitle.replace(/\n/g, '<br>')}</span>
-        </div>
-        <div class="corner-accent left"></div>
-        <div class="corner-accent right"></div>
-      `;
-    } else {
-      frameOverlay.innerHTML = `
-        <div class="frame-circle"></div>
-        <div class="frame-badge"><i class="fa-solid fa-user-graduate"></i></div>
-        <div class="frame-title top">
-          <strong>SELAMAT DATANG</strong>
-          <span>MAHASISWA BARU</span>
-        </div>
-        <div class="frame-title bottom">
-          <span>${template.subtitle.replace(/\n/g, '<br>')}</span>
-        </div>
-        <div class="wave"></div>
-        <div class="confetti"></div>
-      `;
-    }
-  }
-
-  function bindEvents() {
+  function bind() {
     uploadZone.addEventListener('click', () => photoInput.click());
-    uploadZone.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        photoInput.click();
-      }
-    });
-
-    photoInput.addEventListener('change', (event) => {
-      const file = event.target.files?.[0];
-      if (file) handleFile(file);
-    });
-
-    ['dragenter', 'dragover'].forEach((eventName) => {
-      uploadZone.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        uploadZone.classList.add('dragover');
-      });
-    });
-
-    ['dragleave', 'drop'].forEach((eventName) => {
-      uploadZone.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        uploadZone.classList.remove('dragover');
-      });
-    });
-
-    uploadZone.addEventListener('drop', (event) => {
-      const file = event.dataTransfer?.files?.[0];
-      if (file) handleFile(file);
-    });
-
-    zoomSlider.addEventListener('input', () => {
-      state.scale = Number(zoomSlider.value);
-      zoomValue.textContent = `${Math.round(state.scale * 100)}%`;
-      drawPreview();
-    });
-
-    rotateSlider.addEventListener('input', () => {
-      state.rotation = Number(rotateSlider.value);
-      rotateValue.textContent = `${state.rotation}°`;
-      drawPreview();
-    });
-
-    resetBtn.addEventListener('click', () => {
-      resetImagePosition(true);
-      drawPreview();
-      App.showToast('Posisi direset', 'Foto kembali ke posisi awal.');
-    });
-
-    downloadBtn.addEventListener('click', downloadResult);
-    changeTemplateBtn.addEventListener('click', () => {
-      App.scrollToSection('template');
-      App.showToast('Pilih template lain', 'Silakan pilih template baru dari daftar.');
-    });
-
-    canvasStage.addEventListener('dblclick', () => {
-      resetImagePosition(true);
-      drawPreview();
-      App.showToast('Reset cepat', 'Posisi foto diatur ulang melalui double click.');
-    });
-
-    canvasStage.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('pointercancel', onPointerUp);
+    uploadZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); photoInput.click(); } });
+    photoInput.addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) loadFile(f); });
+    ['dragenter', 'dragover'].forEach(ev => uploadZone.addEventListener(ev, e => { e.preventDefault(); uploadZone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(ev => uploadZone.addEventListener(ev, e => { e.preventDefault(); uploadZone.classList.remove('dragover'); }));
+    uploadZone.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) loadFile(f); });
+    zoomSlider.addEventListener('input', () => { state.scale = Number(zoomSlider.value); zoomValue.textContent = `${Math.round(state.scale * 100)}%`; draw(); });
+    rotateSlider.addEventListener('input', () => { state.rotation = Number(rotateSlider.value); rotateValue.textContent = `${state.rotation}°`; draw(); });
+    resetBtn.addEventListener('click', () => { fitToPortraitPreset(); draw(); App.showToast('Reset', 'Preset portrait diterapkan ulang.'); });
+    downloadBtn.addEventListener('click', download);
+    changeTemplateBtn.addEventListener('click', () => App.scrollToSection('template'));
+    canvasStage.addEventListener('dblclick', () => { fitToPortraitPreset(); draw(); });
+    canvasStage.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
   }
 
-  function onPointerDown(event) {
-    if (!state.image) return;
+  function onDown(e) { if (!state.image) return; state.dragging = true; state.px = e.clientX; state.py = e.clientY; state.sx = state.x; state.sy = state.y; canvasStage.setPointerCapture && canvasStage.setPointerCapture(e.pointerId); }
+  function onMove(e) { if (!state.dragging || !state.image) return; const r = canvasStage.getBoundingClientRect(); state.x = state.sx + (e.clientX - state.px) * (PREVIEW / r.width); state.y = state.sy + (e.clientY - state.py) * (PREVIEW / r.height); draw(); }
+  function onUp() { state.dragging = false; }
 
-    state.isDragging = true;
-    state.pointerStartX = event.clientX;
-    state.pointerStartY = event.clientY;
-    state.dragStartX = state.x;
-    state.dragStartY = state.y;
-    if (canvasStage.setPointerCapture) {
-      canvasStage.setPointerCapture(event.pointerId);
-    }
+  function progress() {
+    uploadProgressWrapper.classList.remove('hidden'); uploadProgressBar.style.width = '0%'; uploadProgressText.textContent = '0%';
+    return new Promise(resolve => { let p = 0; const t = setInterval(() => { p += 20; if (p >= 100) { p = 100; clearInterval(t); setTimeout(() => { uploadProgressWrapper.classList.add('hidden'); resolve(); }, 120); } uploadProgressBar.style.width = `${p}%`; uploadProgressText.textContent = `${p}%`; }, 45); });
   }
 
-  function onPointerMove(event) {
-    if (!state.isDragging || !state.image) return;
-
-    const rect = canvasStage.getBoundingClientRect();
-    const scaleX = previewSize / rect.width;
-    const scaleY = previewSize / rect.height;
-
-    state.x = state.dragStartX + (event.clientX - state.pointerStartX) * scaleX;
-    state.y = state.dragStartY + (event.clientY - state.pointerStartY) * scaleY;
-    drawPreview();
+  async function loadFile(file) {
+    if (!file.type.startsWith('image/')) return App.showToast('File tidak valid', 'Pilih gambar.', 'error');
+    if (!state.template) return App.showToast('Pilih template dulu', 'Pilih template sebelum upload foto.', 'error');
+    await progress();
+    const url = await readFile(file); const img = await loadImage(url);
+    state.image = img; fitToPortraitPreset(); canvasEmpty.classList.add('hidden'); draw(); App.showToast('Foto siap', 'Foto berhasil dimuat.');
   }
 
-  function onPointerUp() {
-    state.isDragging = false;
+  function readFile(file) { return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file); }); }
+  function loadImage(src) { return new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = src; }); }
+
+  function fitToPortraitPreset() {
+    if (!state.image) { state.x = PREVIEW / 2; state.y = PREVIEW / 2; state.scale = 1; state.rotation = 0; zoomSlider.value = '1'; rotateSlider.value = '0'; zoomValue.textContent = '100%'; rotateValue.textContent = '0°'; return; }
+    const hole = PREVIEW * HOLE, target = hole * 2.12;
+    state.baseScale = Math.max(target / state.image.width, target / state.image.height);
+    state.x = PREVIEW / 2; state.y = PREVIEW / 2; state.scale = 1; state.rotation = 0;
+    zoomSlider.value = '1'; rotateSlider.value = '0'; zoomValue.textContent = '100%'; rotateValue.textContent = '0°';
   }
 
-  function simulateProgress() {
-    uploadProgressWrapper.classList.remove('hidden');
-    uploadProgressBar.style.width = '0%';
-    uploadProgressText.textContent = '0%';
-
-    let progress = 0;
-    return new Promise((resolve) => {
-      const timer = setInterval(() => {
-        progress += 20;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(timer);
-          uploadProgressBar.style.width = `${progress}%`;
-          uploadProgressText.textContent = `${progress}%`;
-          setTimeout(() => {
-            uploadProgressWrapper.classList.add('hidden');
-            resolve();
-          }, 220);
-        } else {
-          uploadProgressBar.style.width = `${progress}%`;
-          uploadProgressText.textContent = `${progress}%`;
-        }
-      }, 70);
-    });
+  function drawBg(c, size, theme) {
+    c.save(); const g = c.createLinearGradient(0, 0, size, size);
+    if (theme === 'newstudent') { g.addColorStop(0, '#f2fbff'); g.addColorStop(1, '#eefaf4'); } else { g.addColorStop(0, '#eef5ff'); g.addColorStop(1, '#f8fbff'); }
+    c.fillStyle = g; c.fillRect(0,0,size,size); c.restore();
   }
 
-  async function handleFile(file) {
-    if (!file.type.startsWith('image/')) {
-      App.showToast('File tidak valid', 'Silakan unggah file gambar.', 'error');
-      return;
-    }
-
-    if (!state.currentTemplate) {
-      App.showToast('Pilih template dulu', 'Silakan pilih salah satu template sebelum upload foto.', 'error');
-      return;
-    }
-
-    await simulateProgress();
-
-    const dataUrl = await readFileAsDataURL(file);
-    const image = await loadImage(dataUrl);
-
-    state.image = image;
-    state.imageName = file.name.replace(/\.[^.]+$/, '');
-    setDefaultTransform();
-    canvasEmpty.classList.add('hidden');
-    drawPreview();
-    App.showToast('Foto berhasil diunggah', `${file.name} siap diedit.`);
+  function drawPhoto(c, size) {
+    const hole = size * HOLE;
+    c.save();
+    c.beginPath();
+    c.arc(size/2, size/2, hole, 0, Math.PI * 2);
+    c.clip();
+    c.translate(state.x, state.y); c.rotate(state.rotation * Math.PI / 180);
+    const s = state.baseScale * state.scale, w = state.image.width * s, h = state.image.height * s;
+    c.drawImage(state.image, -w/2, -h/2, w, h);
+    c.restore();
   }
 
-  function readFileAsDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function loadImage(src) {
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = src;
-    });
-  }
-
-  function setDefaultTransform() {
-    if (!state.image) return;
-
-    const imageCoverScale = Math.max(previewSize / state.image.width, previewSize / state.image.height);
-    state.baseScale = imageCoverScale;
-    state.x = previewSize / 2;
-    state.y = previewSize / 2;
-    state.scale = 1;
-    state.rotation = 0;
-    zoomSlider.value = '1';
-    rotateSlider.value = '0';
-    zoomValue.textContent = '100%';
-    rotateValue.textContent = '0°';
-  }
-
-  function resetImagePosition(keepImage = true) {
-    if (keepImage && state.image) {
-      setDefaultTransform();
+  function drawFrame(c, size) {
+    const center = size / 2, hole = size * HOLE;
+    c.save();
+    if (state.template.theme === 'graduation') {
+      c.fillStyle = '#1b57bd'; c.beginPath(); c.moveTo(size*0.07, size*0.06); c.lineTo(size*0.93, size*0.06); c.lineTo(size*0.86, size*0.17); c.lineTo(size*0.14, size*0.17); c.closePath(); c.fill();
+      c.fillStyle = '#f0c45d'; c.beginPath(); c.moveTo(size*0.11, size*0.83); c.lineTo(size*0.89, size*0.83); c.lineTo(size*0.85, size*0.92); c.lineTo(size*0.15, size*0.92); c.closePath(); c.fill();
+      c.strokeStyle = '#1a55b9'; c.lineWidth = size * 0.028; c.beginPath(); c.arc(center, center, hole + size * 0.02, 0, Math.PI * 2); c.stroke();
+      c.save(); c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(center, center, hole, 0, Math.PI * 2); c.fill(); c.restore();
+      c.strokeStyle = 'rgba(255,255,255,.88)'; c.lineWidth = size * 0.008; c.setLineDash([size*0.01, size*0.012]); c.beginPath(); c.arc(center, center, hole + size * 0.045, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
+      c.fillStyle = '#d8a62c'; c.beginPath(); c.arc(size*0.79, size*0.18, size*0.055, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#fff'; c.font = `800 ${size*0.05}px Poppins`; c.textAlign = 'center'; c.fillText('SELAMAT', center, size*0.16); c.font = `700 ${size*0.036}px Poppins`; c.fillText('YUDISIUM SARJANA', center, size*0.215);
     } else {
-      state.x = previewSize / 2;
-      state.y = previewSize / 2;
-      state.scale = 1;
-      state.rotation = 0;
-      zoomSlider.value = '1';
-      rotateSlider.value = '0';
-      zoomValue.textContent = '100%';
-      rotateValue.textContent = '0°';
+      c.fillStyle = '#2eb96f'; c.beginPath(); c.moveTo(0, size*0.0); c.lineTo(size, size*0.0); c.lineTo(size, size*0.25); c.lineTo(0, size*0.15); c.closePath(); c.fill();
+      c.fillStyle = '#1b57bd'; c.beginPath(); c.arc(size*0.68, size*0.18, size*0.08, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#f0c45d'; c.beginPath(); c.arc(size*0.84, size*0.16, size*0.11, 0, Math.PI * 2); c.strokeStyle = '#f0c45d'; c.lineWidth = size * 0.02; c.stroke();
+      c.strokeStyle = '#2ea96a'; c.lineWidth = size * 0.03; c.beginPath(); c.arc(center, center, hole + size * 0.022, 0.95 * Math.PI, 2.1 * Math.PI); c.stroke();
+      c.save(); c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(center, center, hole, 0, Math.PI * 2); c.fill(); c.restore();
+      c.fillStyle = '#fff'; c.font = `800 ${size*0.05}px Poppins`; c.textAlign = 'center'; c.fillText('SELAMAT DATANG', center, size*0.16); c.font = `700 ${size*0.036}px Poppins`; c.fillText('MAHASISWA BARU', center, size*0.215);
     }
+    c.restore();
   }
 
-  function drawPreview() {
-    ctx.clearRect(0, 0, previewSize, previewSize);
-    ctx.save();
+  function draw() { ctx.clearRect(0,0,PREVIEW,PREVIEW); drawBg(ctx, PREVIEW, state.template ? state.template.theme : 'graduation'); if (state.template && state.image) drawPhoto(ctx, PREVIEW); if (state.template) drawFrame(ctx, PREVIEW); if (!state.image) canvasEmpty.classList.remove('hidden'); }
 
-    drawBackground(ctx, previewSize, state.currentTemplate?.theme || 'graduation');
-    drawFrameOnCanvas(ctx, previewSize, false);
-
-    if (state.image) {
-      drawMaskedPhoto(ctx, previewSize);
-      canvasEmpty.classList.add('hidden');
-    } else {
-      canvasEmpty.classList.remove('hidden');
-    }
-
-    drawFrameOnCanvas(ctx, previewSize, true);
-    ctx.restore();
+  function download() {
+    if (!state.template) return App.showToast('Belum ada template', 'Pilih template terlebih dahulu.', 'error');
+    if (!state.image) return App.showToast('Belum ada foto', 'Unggah foto sebelum mengunduh.', 'error');
+    const c = document.createElement('canvas'); c.width = EXPORT; c.height = EXPORT; const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    drawBg(x, EXPORT, state.template.theme);
+    x.save(); x.beginPath(); x.arc(EXPORT/2, EXPORT/2, EXPORT * HOLE, 0, Math.PI * 2); x.clip(); x.translate((state.x / PREVIEW) * EXPORT, (state.y / PREVIEW) * EXPORT); x.rotate(state.rotation * Math.PI / 180); const s = (state.baseScale * state.scale) * (EXPORT / PREVIEW); const w = state.image.width * s, h = state.image.height * s; x.drawImage(state.image, -w/2, -h/2, w, h); x.restore();
+    drawFrame(x, EXPORT);
+    c.toBlob(blob => { if (!blob) return App.showToast('Gagal', 'PNG gagal dibuat.', 'error'); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${state.template.id}-portrait-twibbon.png`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href); App.showToast('PNG siap', 'Hasil siap diunduh.'); }, 'image/png');
   }
 
-
-  function drawBackground(context, size, theme) {
-    context.save();
-    const gradient = context.createLinearGradient(0, 0, size, size);
-    if (theme === 'newstudent') {
-      gradient.addColorStop(0, '#eef8ff');
-      gradient.addColorStop(1, '#eefaf4');
-    } else {
-      gradient.addColorStop(0, '#edf4ff');
-      gradient.addColorStop(1, '#f8fbff');
-    }
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, size, size);
-    context.restore();
-  }
-
-  function drawMaskedPhoto(context, size) {
-    const center = size / 2;
-    const radius = size * 0.315;
-    context.save();
-    if (state.currentTemplate.theme === 'graduation') {
-      context.beginPath();
-      context.arc(center, center, radius - size * 0.055, 0, Math.PI * 2);
-    } else {
-      context.beginPath();
-      context.arc(center, center, radius - size * 0.045, 0, Math.PI * 2);
-    }
-    context.clip();
-
-    context.save();
-    context.translate(state.x, state.y);
-    context.rotate((state.rotation * Math.PI) / 180);
-    const finalScale = state.baseScale * state.scale;
-    const drawWidth = state.image.width * finalScale;
-    const drawHeight = state.image.height * finalScale;
-    context.drawImage(state.image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-    context.restore();
-    context.restore();
-  }
-  function drawFrameOnCanvas(context, size, overlayOnly = true) {
-    if (!state.currentTemplate) return;
-
-    const center = size / 2;
-    const radius = size * 0.315;
-
-    context.save();
-
-    if (state.currentTemplate.theme === 'graduation') {
-      drawRibbon(context, size * 0.08, size * 0.06, size * 0.84, size * 0.1, '#1b4da7', '#2a6de0');
-      drawRibbon(context, size * 0.1, size * 0.82, size * 0.8, size * 0.11, '#bc8d13', '#f0c45d');
-
-      if (overlayOnly) {
-        context.lineWidth = size * 0.035;
-        context.strokeStyle = '#1a55b9';
-        context.beginPath();
-        context.arc(center, center, radius, 0, Math.PI * 2);
-        context.stroke();
-
-        context.lineWidth = size * 0.012;
-        context.strokeStyle = '#ffffff';
-        context.beginPath();
-        context.arc(center, center, radius - size * 0.022, 0, Math.PI * 2);
-        context.stroke();
-      }
-
-      context.lineWidth = size * 0.012;
-      context.strokeStyle = '#d8a62c';
-      context.beginPath();
-      context.arc(center, center, radius + size * 0.025, 0, Math.PI * 2);
-      context.stroke();
-
-      context.setLineDash([size * 0.01, size * 0.012]);
-      context.lineWidth = size * 0.004;
-      context.strokeStyle = 'rgba(255,255,255,0.52)';
-      context.beginPath();
-      context.arc(center, center, radius + size * 0.06, 0, Math.PI * 2);
-      context.stroke();
-      context.setLineDash([]);
-
-      drawBadge(context, size * 0.79, size * 0.18, size * 0.055, '#b78300', '#f0c45d', 'cap');
-      drawCornerDecoration(context, size * 0.12, size * 0.74, size * 0.09, '#ffffff');
-      drawCornerDecoration(context, size * 0.83, size * 0.19, size * 0.09, '#ffffff', true);
-      if (overlayOnly) {
-        drawTitleBlock(context, size, center, size * 0.15, ['SELAMAT', 'YUDISIUM SARJANA'], '#ffffff');
-        drawMultilineText(context, state.currentTemplate.subtitle, center, size * 0.865, size * 0.026, '#ffffff', 1.35, 600, size);
-      }
-    } else {
-      drawWaveBand(context, size, size * 0.68, size * 0.16, '#2a71e2', '#33bb83');
-
-      if (overlayOnly) {
-        context.lineWidth = size * 0.028;
-        context.strokeStyle = '#ffffff';
-        context.beginPath();
-        context.arc(center, center, radius, 0, Math.PI * 2);
-        context.stroke();
-
-        context.lineWidth = size * 0.012;
-        context.strokeStyle = '#1b57bd';
-        context.beginPath();
-        context.arc(center, center, radius + size * 0.022, 0, Math.PI * 2);
-        context.stroke();
-      }
-
-      context.lineWidth = size * 0.016;
-      context.strokeStyle = 'rgba(30,163,108,0.28)';
-      context.beginPath();
-      context.arc(center, center, radius + size * 0.05, 0, Math.PI * 2);
-      context.stroke();
-
-      drawPartialCircle(context, size * 0.82, size * 0.18, size * 0.12, '#f0c45d', size);
-      drawBadge(context, size * 0.76, size * 0.19, size * 0.055, '#1950b0', '#2fc181', 'user');
-      drawConfetti(context, size);
-      if (overlayOnly) {
-        drawTitleBlock(context, size, center, size * 0.13, ['SELAMAT DATANG', 'MAHASISWA BARU'], '#ffffff');
-        drawMultilineText(context, state.currentTemplate.subtitle, center, size * 0.86, size * 0.026, '#ffffff', 1.35, 600, size);
-      }
-    }
-
-    context.restore();
-  }
-
-  function drawRibbon(context, x, y, width, height, startColor, endColor) {
-    const gradient = context.createLinearGradient(x, y, x + width, y + height);
-    gradient.addColorStop(0, startColor);
-    gradient.addColorStop(1, endColor);
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.moveTo(x, y);
-    context.lineTo(x + width, y);
-    context.lineTo(x + width * 0.94, y + height);
-    context.lineTo(x + width * 0.06, y + height);
-    context.closePath();
-    context.shadowColor = 'rgba(10,27,54,0.18)';
-    context.shadowBlur = 18;
-    context.fill();
-    context.shadowBlur = 0;
-  }
-
-  function drawBadge(context, x, y, radius, startColor, endColor, iconType) {
-    const gradient = context.createLinearGradient(x - radius, y - radius, x + radius, y + radius);
-    gradient.addColorStop(0, startColor);
-    gradient.addColorStop(1, endColor);
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.arc(x, y, radius, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = '#ffffff';
-    context.strokeStyle = '#ffffff';
-    context.lineWidth = radius * 0.09;
-
-    if (iconType === 'cap') {
-      context.beginPath();
-      context.moveTo(x - radius * 0.75, y - radius * 0.12);
-      context.lineTo(x, y - radius * 0.5);
-      context.lineTo(x + radius * 0.75, y - radius * 0.12);
-      context.lineTo(x, y + radius * 0.26);
-      context.closePath();
-      context.stroke();
-      context.beginPath();
-      context.moveTo(x - radius * 0.33, y + radius * 0.18);
-      context.lineTo(x + radius * 0.33, y + radius * 0.18);
-      context.stroke();
-      context.beginPath();
-      context.moveTo(x + radius * 0.42, y - radius * 0.02);
-      context.lineTo(x + radius * 0.58, y + radius * 0.5);
-      context.stroke();
-    } else {
-      context.beginPath();
-      context.arc(x, y - radius * 0.14, radius * 0.28, 0, Math.PI * 2);
-      context.fill();
-      context.beginPath();
-      context.arc(x, y + radius * 0.42, radius * 0.5, Math.PI, 0);
-      context.stroke();
-      context.beginPath();
-      context.moveTo(x - radius * 0.66, y - radius * 0.02);
-      context.lineTo(x, y - radius * 0.4);
-      context.lineTo(x + radius * 0.66, y - radius * 0.02);
-      context.lineTo(x, y + radius * 0.3);
-      context.closePath();
-      context.stroke();
-    }
-  }
-
-  function drawCornerDecoration(context, x, y, size, color, invert = false) {
-    context.save();
-    context.translate(x, y);
-    context.rotate((invert ? -20 : 20) * Math.PI / 180);
-    context.strokeStyle = color;
-    context.globalAlpha = 0.22;
-    context.lineWidth = 4;
-    context.strokeRect(-size / 2, -size / 2, size, size);
-    context.restore();
-  }
-
-  function drawTitleBlock(context, canvasSize, x, y, lines, color) {
-    context.save();
-    context.fillStyle = color;
-    context.textAlign = 'center';
-    context.shadowColor = 'rgba(10,27,54,0.3)';
-    context.shadowBlur = 20;
-    context.font = `800 ${canvasSize * 0.047}px Poppins`;
-    context.fillText(lines[0], x, y);
-    context.font = `700 ${canvasSize * 0.034}px Poppins`;
-    context.fillText(lines[1], x, y + canvasSize * 0.05);
-    context.restore();
-  }
-
-  function drawMultilineText(context, text, x, y, relativeFontSize, color, lineHeight = 1.35, fontWeight = 600, canvasSize = previewSize) {
-    const lines = text.split('\n');
-    context.save();
-    context.fillStyle = color;
-    context.textAlign = 'center';
-    context.font = `${fontWeight} ${relativeFontSize * canvasSize}px Poppins`;
-    lines.forEach((line, index) => {
-      context.fillText(line, x, y + index * relativeFontSize * canvasSize * lineHeight);
-    });
-    context.restore();
-  }
-
-  function drawWaveBand(context, canvasSize, top, height, startColor, endColor) {
-    const gradient = context.createLinearGradient(0, top, canvasSize, top + height);
-    gradient.addColorStop(0, startColor);
-    gradient.addColorStop(1, endColor);
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.moveTo(-20, top + height * 0.38);
-    context.bezierCurveTo(canvasSize * 0.14, top + height * 0.08, canvasSize * 0.28, top + height * 0.72, canvasSize * 0.42, top + height * 0.34);
-    context.bezierCurveTo(canvasSize * 0.56, top + height * 0.02, canvasSize * 0.7, top + height * 0.72, canvasSize * 0.86, top + height * 0.24);
-    context.bezierCurveTo(canvasSize * 0.94, top + height * 0.06, canvasSize * 1.02, top + height * 0.42, canvasSize + 20, top + height * 0.18);
-    context.lineTo(canvasSize + 20, canvasSize + 20);
-    context.lineTo(-20, canvasSize + 20);
-    context.closePath();
-    context.globalAlpha = 0.9;
-    context.fill();
-    context.globalAlpha = 1;
-  }
-
-  function drawPartialCircle(context, x, y, radius, color, canvasSize) {
-    context.save();
-    context.strokeStyle = color;
-    context.lineWidth = canvasSize * 0.018;
-    context.globalAlpha = 0.72;
-    context.beginPath();
-    context.arc(x, y, radius, Math.PI * 0.25, Math.PI * 1.75);
-    context.stroke();
-    context.restore();
-  }
-
-  function drawConfetti(context, canvasSize) {
-    const pieces = [
-      { x: canvasSize * 0.18, y: canvasSize * 0.18, color: '#f0c45d', rotate: 20 },
-      { x: canvasSize * 0.3, y: canvasSize * 0.24, color: '#ffffff', rotate: -14 },
-      { x: canvasSize * 0.77, y: canvasSize * 0.31, color: '#2fc181', rotate: 8 },
-      { x: canvasSize * 0.12, y: canvasSize * 0.62, color: '#ffffff', rotate: 30 },
-      { x: canvasSize * 0.76, y: canvasSize * 0.68, color: '#1b57bd', rotate: -18 }
-    ];
-
-    pieces.forEach((piece) => {
-      context.save();
-      context.translate(piece.x, piece.y);
-      context.rotate((piece.rotate * Math.PI) / 180);
-      context.fillStyle = piece.color;
-      context.fillRect(-7, -7, 14, 14);
-      context.restore();
-    });
-  }
-
-  function downloadResult() {
-    if (!state.currentTemplate) {
-      App.showToast('Belum ada template', 'Pilih template terlebih dahulu.', 'error');
-      return;
-    }
-
-    if (!state.image) {
-      App.showToast('Belum ada foto', 'Unggah foto sebelum mengunduh hasil.', 'error');
-      return;
-    }
-
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = exportSize;
-    exportCanvas.height = exportSize;
-    const exportContext = exportCanvas.getContext('2d');
-
-    exportContext.clearRect(0, 0, exportSize, exportSize);
-
-    drawMaskedPhoto(exportContext, exportSize);
-    drawFrameOnCanvas(exportContext, exportSize);
-
-    exportCanvas.toBlob((blob) => {
-      if (!blob) {
-        App.showToast('Unduhan gagal', 'Terjadi masalah saat membuat file PNG.', 'error');
-        return;
-      }
-
-      const link = document.createElement('a');
-      const safeName = `${state.currentTemplate.id}-${state.imageName || 'hasil'}.png`;
-      link.href = URL.createObjectURL(blob);
-      link.download = safeName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(link.href);
-      App.showToast('PNG berhasil dibuat', 'Hasil twibbon telah diunduh dengan resolusi tinggi.');
-    }, 'image/png', 1);
-  }
-
-  function init() {
-    bindEvents();
-    drawPreview();
-  }
-
-  return {
-    init,
-    openTemplate,
-    drawPreview
-  };
+  function init() { bind(); draw(); }
+  return { init, openTemplate };
 })();
